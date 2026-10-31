@@ -67,6 +67,7 @@ When web research is used, the final answer includes Markdown citations and a
 | `verbose` | Display tool results immediately |
 | `compact` | Collapse tool results while the agent runs |
 | `reset` | Clear conversation memory, cached tools, and sources |
+| `export` | Export the architecture as editable Mermaid and SVG files |
 | `quit` or `exit` | Close the application |
 
 ## Session memory
@@ -84,3 +85,19 @@ the previous result is not enough.
 - `main.py` - Application code and terminal interface
 - `requirements.txt` - Python dependencies
 - `.env` - Local API key configuration; do not commit this file
+
+## Export the architecture
+
+Start the application and enter:
+
+```text
+export
+```
+
+This creates:
+
+- `architecture.mmd` - editable Mermaid diagram source
+- `architecture.svg` - image version for browsers, presentations, and documentation
+
+The SVG export uses Graphviz's `dot` command when it is installed. The Mermaid
+file is always created.

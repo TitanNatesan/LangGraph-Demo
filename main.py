@@ -1,6 +1,8 @@
 import os
 import re
 import json
+import shutil
+import subprocess
 from urllib.parse import urlparse
 
 import requests
@@ -340,6 +342,86 @@ def show_graph():
     console.print(Panel(diagram, title="[bold]Agent graph[/bold]", border_style="cyan"))
 
 
+def export_architecture() -> None:
+    """Export the application architecture as Mermaid and, when available, SVG."""
+    mermaid = """flowchart TD
+    U[User question] --> UI[Rich terminal UI]
+    UI --> G[LangGraph workflow]
+    G --> L[LLM node]
+    L --> D{Needs a tool?}
+    D -->|No| A[Markdown final answer]
+    D -->|Yes| T[Tool node]
+    T --> C{Cached result?}
+    C -->|Yes| M[Session memory]
+    C -->|No| W[Web search / page scraper]
+    W --> R[Tool result]
+    R --> S[Source URL collection]
+    S --> M
+    M --> L
+    A --> SRC[Markdown Sources section]
+    """
+    mermaid_path = "architecture.mmd"
+    svg_path = "architecture.svg"
+    with open(mermaid_path, "w", encoding="utf-8") as file:
+        file.write(mermaid)
+
+    dot = shutil.which("dot")
+    if not dot:
+        console.print(
+            f"[green]Exported Mermaid diagram:[/green] {mermaid_path}\n"
+            "[dim]Install Graphviz and run 'export' again to also create architecture.svg.[/dim]"
+        )
+        return
+
+    graphviz = """digraph architecture {
+      rankdir=TB;
+      graph [bgcolor="white", pad="0.3", nodesep="0.45", ranksep="0.6"];
+      node [shape=box, style="rounded,filled", fontname="Arial", color="#64748b",
+            fillcolor="#f8fafc", margin="0.16,0.10"];
+      edge [fontname="Arial", color="#475569"];
+      user [label="User question", fillcolor="#dcfce7"];
+      ui [label="Rich terminal UI"];
+      workflow [label="LangGraph workflow"];
+      llm [label="LLM node", fillcolor="#dbeafe"];
+      decision [label="Needs a tool?", shape=diamond, fillcolor="#fef3c7"];
+      tools [label="Tool node", fillcolor="#f3e8ff"];
+      cache [label="Cached result?", shape=diamond, fillcolor="#fef3c7"];
+      memory [label="Session memory"];
+      web [label="Web search / page scraper", fillcolor="#fee2e2"];
+      sources [label="Source URL collection"];
+      answer [label="Markdown final answer", fillcolor="#dcfce7"];
+      citations [label="Markdown Sources section", fillcolor="#dcfce7"];
+      user -> ui -> workflow -> llm -> decision;
+      decision -> answer [label=" no"];
+      decision -> tools [label=" yes"];
+      tools -> cache;
+      cache -> memory [label=" yes"];
+      cache -> web [label=" no"];
+      web -> sources -> memory -> llm;
+      answer -> citations;
+    }"""
+    try:
+        subprocess.run(
+            [dot, "-Tsvg", "-o", svg_path],
+            input=graphviz,
+            text=True,
+            check=True,
+            capture_output=True,
+        )
+    except (OSError, subprocess.CalledProcessError) as error:
+        detail = error.stderr.strip() if isinstance(error, subprocess.CalledProcessError) else str(error)
+        console.print(
+            f"[yellow]Exported Mermaid diagram:[/yellow] {mermaid_path}\n"
+            f"[red]SVG export failed:[/red] {detail}"
+        )
+        return
+    console.print(
+        f"[green]Architecture exported successfully:[/green]\n"
+        f"  • {mermaid_path} (editable Mermaid source)\n"
+        f"  • {svg_path} (viewable image)"
+    )
+
+
 def show_help() -> None:
     table = Table(title="Commands", border_style="cyan", show_header=False)
     table.add_column("Command", style="bold green")
@@ -350,6 +432,7 @@ def show_help() -> None:
     table.add_row("verbose", "Expand tool output while the agent runs")
     table.add_row("compact", "Collapse tool output while the agent runs")
     table.add_row("reset", "Forget this session's conversation and tool cache")
+    table.add_row("export", "Export the architecture as Mermaid and SVG")
     console.print(table)
 
 
@@ -387,6 +470,9 @@ def main():
             tool_cache = {}
             trace_log = []
             console.print("[green]Session memory and tool cache cleared.[/green]")
+            continue
+        if question.lower() == "export":
+            export_architecture()
             continue
         if not question:
             continue

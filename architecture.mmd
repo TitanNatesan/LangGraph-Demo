@@ -1,0 +1,16 @@
+flowchart TD
+    U[User question] --> UI[Rich terminal UI]
+    UI --> G[LangGraph workflow]
+    G --> L[LLM node]
+    L --> D{Needs a tool?}
+    D -->|No| A[Markdown final answer]
+    D -->|Yes| T[Tool node]
+    T --> C{Cached result?}
+    C -->|Yes| M[Session memory]
+    C -->|No| W[Web search / page scraper]
+    W --> R[Tool result]
+    R --> S[Source URL collection]
+    S --> M
+    M --> L
+    A --> SRC[Markdown Sources section]
+    
